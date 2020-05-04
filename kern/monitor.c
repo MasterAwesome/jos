@@ -57,10 +57,22 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
-	return 0;
-}
+    volatile uint32_t* ebp = (uint32_t *) read_ebp();
+    volatile uint32_t eip;
 
+    while (ebp != 0)
+    {
+        eip = *(ebp + 1); // ret address on stack.
+        struct Eipdebuginfo info;
+        debuginfo_eip(eip, &info);
+        cprintf("ebp %x eip %x args %08x %08x\n", ebp, eip, *(ebp + 2), *(ebp + 3));
+        cprintf("\t%s:%d: %.*s+%d\n", info.eip_file, info.eip_line,
+                info.eip_fn_namelen, info.eip_fn_name, eip - info.eip_fn_addr);
+        ebp = (uint32_t *) *(ebp); // restore old EBP.
+    }
+
+    return 0;
+}
 
 
 /***** Kernel monitor command interpreter *****/
