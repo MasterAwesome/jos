@@ -304,7 +304,6 @@ page_alloc(int alloc_flags)
 		return 0;
 	}
 
-	// Fill this function in
 	struct PageInfo *alloc = page_free_list;
 	page_free_list = alloc->pp_link; // move the head to next free page.
 	alloc->pp_ref = 0;
@@ -323,7 +322,6 @@ page_alloc(int alloc_flags)
 void
 page_free(struct PageInfo *pp)
 {
-	// Fill this function in
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
 	if (pp->pp_ref == 0 || pp->pp_link)
@@ -470,7 +468,6 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 struct PageInfo *
 page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
-	// Fill this function in
 	pte_t *pte = pgdir_walk(pgdir, va, 0);
 	if (!pte || !(*pte & PTE_P))
 		return NULL;
