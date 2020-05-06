@@ -10,10 +10,9 @@
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
-#include <inc/mmu.h>
 #include <kern/pmap.h>
+#include <inc/mmu.h>
 
-#include "pmap.h"
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
