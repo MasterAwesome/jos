@@ -11,6 +11,8 @@
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
 #include <kern/trap.h>
+#include <kern/pmap.h>
+#include <inc/mmu.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -25,6 +27,8 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Displays backtrace from current EIP", mon_backtrace},
+	{ "showmapping", "Displays PA mapping for argv", mon_showmapping},
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -58,11 +62,50 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
-	return 0;
+    volatile uint32_t* ebp = (uint32_t *) read_ebp();
+    volatile uint32_t eip;
+
+    while (ebp != 0)
+    {
+        eip = *(ebp + 1); // ret address on stack.
+        struct Eipdebuginfo info;
+        debuginfo_eip(eip, &info);
+        cprintf("ebp %x eip %x args %08x %08x\n", ebp, eip, *(ebp + 2), *(ebp + 3));
+        cprintf("\t%s:%d: %.*s+%d\n", info.eip_file, info.eip_line,
+                info.eip_fn_namelen, info.eip_fn_name, eip - info.eip_fn_addr);
+        ebp = (uint32_t *) *(ebp); // restore old EBP.
+    }
+
+    return 0;
 }
 
+int
+mon_showmapping(int argc, char **argv, struct Trapframe *tf)
+{
+	int i;
+	for (i = 1; i < argc; i++) {
+		int number = (int) strtol(argv[i], NULL, 0);
+		void* va = KADDR((physaddr_t) number);
+		cprintf("\nPhysical Addr: 0x%x {\n", number);
+		struct PageInfo *pp = page_lookup(kern_pgdir, va, 0);
+		pte_t* pte = (pte_t*) page2kva(pp);
+		cprintf("\tPermissions: {");
+		if (*pte & PTE_P)
+			cprintf("PTE_P|");
+		if (*pte & PTE_W)
+			cprintf("PTE_W|");
+		if (*pte & PTE_U)
+			cprintf("PTE_U|");
+		cprintf("}\n");
+		cprintf("\tpp: 0x%x\n", pp);
 
+		cprintf("\tpp->pp_ref = %d,\n", pp->pp_ref);
+		cprintf("\tpp->pp_link = 0x%x,\n", pp->pp_link);
+		cprintf("\tva: 0x%x\n", va);
+		cprintf("}\n");
+	}
+	return 0;
+}
 
 /***** Kernel monitor command interpreter *****/
 
