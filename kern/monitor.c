@@ -22,7 +22,7 @@ struct Command {
 	const char *desc;
 	// return -1 to force monitor to exit
 	int (*func)(int argc, char** argv, struct Trapframe* tf);
-} __attribute__ ((aligned (32)));
+}; 
 
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
