@@ -562,8 +562,27 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+	uintptr_t start = (uintptr_t) ROUNDDOWN((uintptr_t) va, PGSIZE);
+	uintptr_t end = (uintptr_t) ROUNDUP((uintptr_t) va + len, PGSIZE);
+	uintptr_t ipva = (uintptr_t) va;
 
+	if (env->env_type == ENV_TYPE_USER) {
+		for (; start < end; start += PGSIZE) {
+			pte_t* pte = pgdir_walk(env->env_pgdir, (void*) start, 0);
+			if (!pte) // fault
+				goto failure;
+			if(start >= ULIM) // out of bounds.
+				goto failure;
+			if (((*pte) & perm) != perm || !(*pte & PTE_P)) { // no perms
+				goto failure;
+			}
+		}
+	}
 	return 0;
+failure:
+        
+	user_mem_check_addr = (start < ipva) ? ipva : start; // since we check one page down.
+	return -E_FAULT;
 }
 
 //
