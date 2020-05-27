@@ -20,6 +20,7 @@ pde_t *kern_pgdir;		// Kernel's initial page directory
 struct PageInfo *pages;		// Physical page state array
 static struct PageInfo *page_free_list;	// Free list of physical pages
 
+#undef MEM_DEBUG
 
 // --------------------------------------------------------------
 // Detect machine's physical memory setup.
@@ -357,7 +358,9 @@ struct PageInfo *
 page_alloc(int alloc_flags)
 {
 	if (!page_free_list) {
+#ifdef MEM_DEBUG
 		warn("No memory left on this device!");
+#endif
 		return 0;
 	}
 
@@ -382,7 +385,9 @@ page_free(struct PageInfo *pp)
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
 	if (pp->pp_ref == 0 || pp->pp_link)
+#ifdef MEM_DEBUG
 		warn("We still have references to this cannot be freed!");
+#endif
 
 	pp->pp_link = page_free_list; // add the nexts to current pp link.
 	pp->pp_ref = 0; // mov references to 0.
