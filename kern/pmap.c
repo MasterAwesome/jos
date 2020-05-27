@@ -271,7 +271,12 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
-
+	size_t total_size = KSTKSIZE + KSTKGAP;
+	for (int i = 0; i < NCPU; i++) {
+		uintptr_t kstacktop_i = KSTACKTOP - i * total_size;
+		boot_map_region(kern_pgdir, kstacktop_i - KSTKSIZE, KSTKSIZE,
+						PADDR(percpu_kstacks[i]), PTE_W | PTE_P); // essentially map KSTKGAP to 0.
+	}
 }
 
 // --------------------------------------------------------------
@@ -315,17 +320,18 @@ page_init(void)
 	page_free_list = NULL;
 	pages[0].pp_ref = 1; // mark page 0 as not FREE.
 	// NON FREE PAGES
-	uint32_t kern_pages = (((uint32_t)boot_alloc(0)) - KERNBASE) /
-			      PGSIZE; // boot_alloc(0) gives nextfree.
+	uint32_t kern_pages = (((uint32_t) boot_alloc(0)) - KERNBASE) /
+	PGSIZE; // boot_alloc(0) gives nextfree.
 	uint32_t io_holes = (EXTPHYSMEM - IOPHYSMEM) / PGSIZE;
+	uint32_t mpentry = PGNUM(MPENTRY_PADDR);
 
 	size_t i;
 	for (i = 1; i < npages; i++) {
-		if ((npages_basemem <= i && i < npages_basemem + io_holes) ||
-		    (npages_basemem + io_holes <= i &&
-		     i < npages_basemem + io_holes +
-				     kern_pages) // kern_pages are above ioholes.
-		) {
+		if ((npages_basemem <= i && i < npages_basemem + io_holes)
+				|| ((npages_basemem + io_holes <= i
+						&& (i < npages_basemem + io_holes + kern_pages))
+						|| i == mpentry) // kern_pages are above ioholes.
+				) {
 			pages[i].pp_ref = 1;
 			continue;
 		}
@@ -604,7 +610,13 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	size = ROUNDUP(size, PGSIZE);
+	if (base + size > MMIOLIM)
+		panic("mmio_map_region: OOM\n");
+
+	boot_map_region(kern_pgdir, base, size, pa, PTE_PCD | PTE_PWT | PTE_W);
+	base = base + size;
+	return (void*) (base - size);
 }
 
 static uintptr_t user_mem_check_addr;
