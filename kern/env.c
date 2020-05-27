@@ -553,7 +553,6 @@ env_run(struct Env *e)
 
 	// right about where the triple fault happens :P
 	// jump to usermode
-	cprintf("Turning usermode on CPU[%d]\n", cpunum());
 	unlock_kernel();
 	env_pop_tf(&(curenv->env_tf));
 
